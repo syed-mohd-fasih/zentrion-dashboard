@@ -1,46 +1,48 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
-import "./globals.css"
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import type React from "react";
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import { SocketProvider } from "@/components/providers/SocketProvider";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+const _geist = Geist({ subsets: ["latin"] });
+const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Zentrion Dashboard",
-  description: "Modern policy management and anomaly detection dashboard",
-  generator: "v0.app",
-  icons: {
-    icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
-    ],
-    apple: "/apple-icon.png",
-  },
-}
+	title: "Zentrion Dashboard",
+	description: "Modern policy management and anomaly detection dashboard",
+	icons: {
+		icon: [
+			{
+				url: "/icon-light-32x32.png",
+				media: "(prefers-color-scheme: light)",
+			},
+			{
+				url: "/icon-dark-32x32.png",
+				media: "(prefers-color-scheme: dark)",
+			},
+			{
+				url: "/icon.svg",
+				type: "image/svg+xml",
+			},
+		],
+		apple: "/apple-icon.png",
+	},
+};
 
 export default function RootLayout({
-  children,
+	children,
 }: Readonly<{
-  children: React.ReactNode
+	children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans antialiased`}>
-        {children}
-        <Analytics />
-      </body>
-    </html>
-  )
+	return (
+		<html lang="en" suppressHydrationWarning>
+			<body className={`font-sans antialiased`}>
+				<AuthProvider>
+					<SocketProvider>{children}</SocketProvider>
+				</AuthProvider>
+			</body>
+		</html>
+	);
 }

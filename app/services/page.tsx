@@ -5,112 +5,19 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Search, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { Search } from "lucide-react";
 
-interface Service {
-	id: string;
-	name: string;
-	namespace: string;
-	status: "running" | "crashed" | "restarting";
-	rps: number;
-	errorRate: number;
-	cpu: number;
-	memory: number;
-	policyStatus: "protected" | "needs-update" | "missing";
-}
-
-const mockServices: Service[] = [
-	{
-		id: "1",
-		name: "payment-service",
-		namespace: "production",
-		status: "running",
-		rps: 2450,
-		errorRate: 0.2,
-		cpu: 45,
-		memory: 62,
-		policyStatus: "protected",
-	},
-	{
-		id: "2",
-		name: "cart-service",
-		namespace: "production",
-		status: "running",
-		rps: 3100,
-		errorRate: 0.5,
-		cpu: 38,
-		memory: 58,
-		policyStatus: "needs-update",
-	},
-	{
-		id: "3",
-		name: "auth-service",
-		namespace: "security",
-		status: "running",
-		rps: 1200,
-		errorRate: 0.1,
-		cpu: 22,
-		memory: 40,
-		policyStatus: "protected",
-	},
-	{
-		id: "4",
-		name: "inventory-service",
-		namespace: "production",
-		status: "restarting",
-		rps: 800,
-		errorRate: 2.1,
-		cpu: 78,
-		memory: 85,
-		policyStatus: "missing",
-	},
-	{
-		id: "5",
-		name: "notification-service",
-		namespace: "infrastructure",
-		status: "running",
-		rps: 450,
-		errorRate: 0.8,
-		cpu: 15,
-		memory: 32,
-		policyStatus: "protected",
-	},
-];
-
-const getStatusIcon = (status: string) => {
-	switch (status) {
-		case "running":
-			return <CheckCircle className="w-4 h-4 text-green-500" />;
-		case "crashed":
-			return <AlertCircle className="w-4 h-4 text-red-500" />;
-		case "restarting":
-			return <Clock className="w-4 h-4 text-yellow-500" />;
-		default:
-			return null;
-	}
-};
-
-const getPolicyBadge = (status: string) => {
-	switch (status) {
-		case "protected":
-			return <Badge className="bg-green-500/10 text-green-700 border-green-500/20">Fully protected</Badge>;
-		case "needs-update":
-			return <Badge className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20">Needs update</Badge>;
-		case "missing":
-			return <Badge className="bg-red-500/10 text-red-700 border-red-500/20">Missing policy</Badge>;
-		default:
-			return null;
-	}
-};
+import { useServices } from "@/hooks/useData";
+import type { ServiceInfo } from "@/lib/api/types";
+import Link from "next/link";
 
 export default function ServicesPage() {
 	const [searchTerm, setSearchTerm] = useState("");
-	const filteredServices = mockServices.filter(
-		(s) =>
-			s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			s.namespace.toLowerCase().includes(searchTerm.toLowerCase())
-	);
+	const { data: servicesData, loading } = useServices();
+
+	const filteredServices =
+		servicesData?.services.filter((s: ServiceInfo) => s.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+		[];
 
 	return (
 		<MainLayout>
@@ -147,19 +54,13 @@ export default function ServicesPage() {
 										Namespace
 									</th>
 									<th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">
-										Status
-									</th>
-									<th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">
 										RPS
 									</th>
 									<th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">
 										Error Rate
 									</th>
 									<th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">
-										CPU / Memory
-									</th>
-									<th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">
-										Policy Status
+										Latency
 									</th>
 									<th className="px-6 py-4 text-left text-sm font-semibold text-muted-foreground">
 										Action
@@ -167,47 +68,73 @@ export default function ServicesPage() {
 								</tr>
 							</thead>
 							<tbody>
-								{filteredServices.map((service) => (
-									<tr
-										key={service.id}
-										className="border-b border-border hover:bg-card/50 transition-colors"
-									>
-										<td className="px-6 py-4 text-sm font-medium text-foreground">
-											{service.name}
-										</td>
-										<td className="px-6 py-4 text-sm text-muted-foreground">{service.namespace}</td>
-										<td className="px-6 py-4 text-sm">
-											<div className="flex items-center gap-2">
-												{getStatusIcon(service.status)}
-												<span className="capitalize">{service.status}</span>
-											</div>
-										</td>
-										<td className="px-6 py-4 text-sm text-foreground">
-											{service.rps.toLocaleString()}
-										</td>
-										<td className="px-6 py-4 text-sm text-foreground">
-											{service.errorRate.toFixed(2)}%
-										</td>
-										<td className="px-6 py-4 text-sm text-foreground">
-											{service.cpu}% / {service.memory}%
-										</td>
-										<td className="px-6 py-4 text-sm">{getPolicyBadge(service.policyStatus)}</td>
-										<td className="px-6 py-4 text-sm">
-											<Button variant="ghost" size="sm" className="rounded-lg">
-												View Details
-											</Button>
+								{loading ? (
+									<tr>
+										<td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
+											Loading services...
 										</td>
 									</tr>
-								))}
+								) : filteredServices.length === 0 ? (
+									<tr>
+										<td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
+											No services found
+										</td>
+									</tr>
+								) : (
+									filteredServices.map((service: ServiceInfo) => (
+										<tr
+											key={service.name}
+											className="border-b border-border hover:bg-card/50 transition-colors"
+										>
+											{/* Name */}
+											<td className="px-6 py-4 text-sm font-medium text-foreground">
+												{service.name}
+											</td>
+
+											{/* Namespace */}
+											<td className="px-6 py-4 text-sm font-mono text-foreground">
+												{service.namespace}
+											</td>
+
+											{/* RPS */}
+											<td className="px-6 py-4 text-sm font-mono text-foreground">
+												{service.requestsPerSecond}
+											</td>
+
+											{/* Error Rate */}
+											<td className="px-6 py-4 text-sm font-mono">
+												<span
+													className={
+														service.errorRate > 5 ? "text-red-500" : "text-foreground"
+													}
+												>
+													{service.errorRate}%
+												</span>
+											</td>
+
+											{/* Latency */}
+											<td className="px-6 py-4 text-sm font-mono text-foreground">
+												{service.avgLatency}ms
+											</td>
+
+											{/* Action */}
+											<td className="px-6 py-4 text-sm">
+												<Link href={`/services/${service.name}`}>
+													<Button variant="ghost" size="sm" className="rounded-lg">
+														View Details
+													</Button>
+												</Link>
+											</td>
+										</tr>
+									))
+								)}
 							</tbody>
 						</table>
 					</div>
 				</Card>
 
 				{/* Results Info */}
-				<div className="mt-4 text-sm text-muted-foreground">
-					Showing {filteredServices.length} of {mockServices.length} services
-				</div>
+				<div className="mt-4 text-sm text-muted-foreground">Showing {filteredServices.length} services</div>
 			</div>
 		</MainLayout>
 	);

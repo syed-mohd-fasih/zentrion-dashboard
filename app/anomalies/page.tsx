@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { MainLayout } from "@/components/layout/main-layout";
@@ -8,54 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, AlertTriangle, AlertCircle } from "lucide-react";
 
-interface Anomaly {
-	id: string;
-	timestamp: string;
-	service: string;
-	type: string;
-	severity: "low" | "medium" | "high";
-	suggestedAction: string;
-	status: "resolved" | "unresolved";
-}
-
-const mockAnomalies: Anomaly[] = [
-	{
-		id: "1",
-		timestamp: "2025-01-15 14:23:45",
-		service: "payment-service",
-		type: "Unexpected IP",
-		severity: "high",
-		suggestedAction: "Review policy for unauthorized source",
-		status: "unresolved",
-	},
-	{
-		id: "2",
-		timestamp: "2025-01-15 13:15:22",
-		service: "cart-service",
-		type: "Rate Spike",
-		severity: "medium",
-		suggestedAction: "Consider rate limiting",
-		status: "unresolved",
-	},
-	{
-		id: "3",
-		timestamp: "2025-01-15 12:08:10",
-		service: "auth-service",
-		type: "New Method",
-		severity: "medium",
-		suggestedAction: "Verify new HTTP method usage",
-		status: "resolved",
-	},
-	{
-		id: "4",
-		timestamp: "2025-01-15 10:45:33",
-		service: "inventory-service",
-		type: "Unexpected IP",
-		severity: "high",
-		suggestedAction: "Immediate security review required",
-		status: "unresolved",
-	},
-];
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useAnomalies } from "@/hooks/useData";
+import { useSocketEvent } from "@/hooks/useSocket";
+import type { Anomaly as ApiAnomaly } from "@/lib/api/types";
 
 const getSeverityBadge = (severity: string) => {
 	switch (severity) {
@@ -71,14 +28,35 @@ const getSeverityBadge = (severity: string) => {
 };
 
 export default function AnomaliesPage() {
+	return (
+		<ProtectedRoute>
+			<AnomaliesContent />
+		</ProtectedRoute>
+	);
+}
+
+function AnomaliesContent() {
+	const { data, loading, refetch } = useAnomalies(5);
 	const [searchTerm, setSearchTerm] = useState("");
 	const [filterSeverity, setFilterSeverity] = useState<string | null>(null);
+	const [localAnomalies, setLocalAnomalies] = useState<ApiAnomaly[]>([]);
 
-	const filteredAnomalies = mockAnomalies.filter((a) => {
+	// Merge live socket anomalies with API data
+	const allAnomalies: ApiAnomaly[] = [...localAnomalies, ...(data?.anomalies || [])];
+
+	// Socket subscription
+	useSocketEvent("anomaly.created", (anomaly: ApiAnomaly) => {
+		setLocalAnomalies((prev) => [anomaly, ...prev]);
+	});
+
+	// Your existing filter logic
+	const filteredAnomalies = allAnomalies.filter((a) => {
 		const matchesSearch =
 			a.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			a.type.toLowerCase().includes(searchTerm.toLowerCase());
+
 		const matchesSeverity = !filterSeverity || a.severity === filterSeverity;
+
 		return matchesSearch && matchesSeverity;
 	});
 
@@ -86,9 +64,13 @@ export default function AnomaliesPage() {
 		<MainLayout>
 			<div className="p-6 space-y-8">
 				{/* Header */}
-				<div className="mb-8">
-					<h1 className="text-4xl font-bold text-foreground mb-2">Anomalies</h1>
-					<p className="text-muted-foreground">Detected security anomalies and suspicious activities</p>
+				<div className="mb-8 flex justify-between items-start">
+					<div>
+						<h1 className="text-4xl font-bold text-foreground mb-2">Anomalies</h1>
+						<p className="text-muted-foreground">Detected security anomalies and suspicious activities</p>
+					</div>
+
+					{/* <Button onClick={refetch}>Refresh</Button> */}
 				</div>
 
 				{/* Filters */}
@@ -102,83 +84,105 @@ export default function AnomaliesPage() {
 							className="pl-10 rounded-lg"
 						/>
 					</div>
+
 					<div className="flex gap-2 flex-wrap">
 						<Button
 							variant={filterSeverity === null ? "default" : "ghost"}
 							onClick={() => setFilterSeverity(null)}
-							className="rounded-lg"
 						>
 							All Severities
 						</Button>
-						<Button
-							variant={filterSeverity === "high" ? "default" : "ghost"}
-							onClick={() => setFilterSeverity("high")}
-							className="rounded-lg"
-						>
-							High
-						</Button>
-						<Button
-							variant={filterSeverity === "medium" ? "default" : "ghost"}
-							onClick={() => setFilterSeverity("medium")}
-							className="rounded-lg"
-						>
-							Medium
-						</Button>
-						<Button
-							variant={filterSeverity === "low" ? "default" : "ghost"}
-							onClick={() => setFilterSeverity("low")}
-							className="rounded-lg"
-						>
-							Low
-						</Button>
+
+						{["high", "medium", "low"].map((sev) => (
+							<Button
+								key={sev}
+								variant={filterSeverity === sev ? "default" : "ghost"}
+								onClick={() => setFilterSeverity(sev)}
+							>
+								{sev.charAt(0).toUpperCase() + sev.slice(1)}
+							</Button>
+						))}
 					</div>
 				</div>
 
-				{/* Anomalies Grid */}
+				{/* Anomalies List */}
 				<div className="space-y-4">
-					{filteredAnomalies.map((anomaly) => (
-						<Card key={anomaly.id} className="p-6 hover:bg-card/80 transition-colors cursor-pointer">
-							<div className="flex items-start justify-between gap-4 mb-4">
-								<div className="flex items-start gap-3 flex-1">
-									{anomaly.severity === "high" ? (
-										<AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-									) : (
-										<AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-									)}
-									<div className="flex-1 min-w-0">
-										<h3 className="font-semibold text-foreground mb-1">{anomaly.type}</h3>
-										<p className="text-sm text-muted-foreground mb-2">Service: {anomaly.service}</p>
-										<p className="text-sm text-muted-foreground">{anomaly.suggestedAction}</p>
+					{loading ? (
+						<Card className="p-8 text-center text-muted-foreground">Loading anomalies...</Card>
+					) : filteredAnomalies.length === 0 ? (
+						<Card className="p-8 text-center text-muted-foreground">No anomalies detected yet</Card>
+					) : (
+						filteredAnomalies.map((anomaly) => (
+							<Card key={anomaly.id} className="p-6 hover:bg-card/80 transition-colors">
+								<div className="flex items-start justify-between gap-4 mb-4">
+									<div className="flex items-start gap-3 flex-1">
+										{anomaly.severity === "high" || anomaly.severity === "critical" ? (
+											<AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+										) : (
+											<AlertCircle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
+										)}
+
+										<div className="flex-1 min-w-0">
+											<h3 className="font-semibold text-foreground mb-1">{anomaly.type}</h3>
+
+											<p className="text-sm text-muted-foreground mb-2">
+												Service: {anomaly.service}
+											</p>
+
+											{"details" in anomaly && (
+												<p className="text-sm text-muted-foreground">
+													{(anomaly as any).details}
+												</p>
+											)}
+										</div>
+									</div>
+
+									<div className="flex items-center gap-2">
+										<Badge
+											className={
+												anomaly.severity === "critical"
+													? "bg-red-500/10 text-red-700 border-red-500/20"
+													: anomaly.severity === "high"
+													? "bg-red-500/10 text-red-700 border-red-500/20"
+													: anomaly.severity === "medium"
+													? "bg-yellow-500/10 text-yellow-700 border-yellow-500/20"
+													: "bg-blue-500/10 text-blue-700 border-blue-500/20"
+											}
+										>
+											{anomaly.severity.toUpperCase()}
+										</Badge>
+
+										{"status" in anomaly && (
+											<Badge
+												variant="outline"
+												className={
+													(anomaly as any).status === "resolved"
+														? "bg-green-500/10 text-green-700 border-green-500/20"
+														: "bg-orange-500/10 text-orange-700 border-orange-500/20"
+												}
+											>
+												{(anomaly as any).status === "resolved" ? "Resolved" : "Unresolved"}
+											</Badge>
+										)}
 									</div>
 								</div>
-								<div className="flex items-center gap-2">
-									{getSeverityBadge(anomaly.severity)}
-									<Badge
-										variant="outline"
-										className={
-											anomaly.status === "resolved"
-												? "bg-green-500/10 text-green-700 border-green-500/20"
-												: "bg-orange-500/10 text-orange-700 border-orange-500/20"
-										}
-									>
-										{anomaly.status === "resolved" ? "Resolved" : "Unresolved"}
-									</Badge>
+
+								<div className="flex items-center justify-between">
+									<p className="text-xs text-muted-foreground">
+										{new Date(anomaly.timestamp).toLocaleString()}
+									</p>
+
+									<Button variant="ghost" size="sm" className="rounded-lg">
+										View Details
+									</Button>
 								</div>
-							</div>
-							<div className="flex items-center justify-between">
-								<p className="text-xs text-muted-foreground">{anomaly.timestamp}</p>
-								<Button variant="ghost" size="sm" className="rounded-lg">
-									View Details
-								</Button>
-							</div>
-						</Card>
-					))}
+							</Card>
+						))
+					)}
 				</div>
 
 				{/* Results Info */}
-				<div className="mt-6 text-sm text-muted-foreground">
-					Showing {filteredAnomalies.length} of {mockAnomalies.length} anomalies
-				</div>
+				<div className="mt-6 text-sm text-muted-foreground">Showing {filteredAnomalies.length} anomalies</div>
 			</div>
 		</MainLayout>
 	);
