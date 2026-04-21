@@ -70,7 +70,10 @@ export type AnomalyType =
 export type AnomalySeverity = "low" | "medium" | "high" | "critical";
 
 export interface Anomaly {
+	/** Internal database primary key. Prefer `anomalyId` for lookups. */
 	id: string;
+	/** Public UUID — the value expected by `/anomalies/:id`. */
+	anomalyId: string;
 	timestamp: string;
 	service: string;
 	type: AnomalyType;
@@ -79,6 +82,9 @@ export interface Anomaly {
 	associatedLogs: string[];
 	suggestedPolicyDraftId?: string;
 	metadata?: Record<string, any>;
+	resolved?: boolean;
+	resolvedAt?: string;
+	createdAt?: string;
 }
 
 // ============================================
@@ -88,12 +94,15 @@ export interface Anomaly {
 export type PolicyStatus = "pending" | "approved" | "rejected" | "applied";
 
 export interface PolicyDraft {
+	/** Internal database primary key. Prefer `draftId` for lookups. */
 	id: string;
+	/** Public UUID — the value expected by `/policies/drafts/:id`. */
+	draftId: string;
 	createdAt: string;
 	createdBy: string;
 	service: string;
 	namespace: string;
-	yaml: string;
+	yamlContent: string;
 	status: PolicyStatus;
 	reason: string;
 	appliedAt?: string;

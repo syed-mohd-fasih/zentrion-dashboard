@@ -95,11 +95,10 @@ export const telemetryService = {
 	 * Get specific service details
 	 */
 	async getService(name: string) {
-		const query = apiClient.buildQueryString({ name });
 		return apiClient.get<{
-			service: ServiceInfo;
+			service: ServiceInfo | null;
 			timestamp: string;
-		}>(`/telemetry/services${query}`);
+		}>(`/telemetry/services/${encodeURIComponent(name)}`);
 	},
 };
 
