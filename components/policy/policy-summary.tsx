@@ -1,52 +1,129 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
+"use client";
 
-export function PolicySummary() {
-  return (
-    <div className="space-y-6">
-      <Card className="rounded-2xl border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">API Rate Limiting Policy</CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">Service: API Gateway | Generated: 2025-01-24 14:22:11</p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h4 className="font-semibold text-foreground mb-3">Policy Overview</h4>
-            <Textarea
-              readOnly
-              className="rounded-xl bg-muted border-0"
-              rows={6}
-              value={`This policy implements a comprehensive rate limiting strategy for the API Gateway to prevent abuse and ensure fair resource allocation among users.
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, FileText, ArrowRight } from "lucide-react";
+import { usePolicyDraft } from "@/hooks/useData";
 
-Key Components:
-• Rate limiting threshold: 1000 requests per minute per user
-• Burst allowance: up to 50 requests in a 5-second window
-• Backoff strategy: exponential retry-after headers
-• Whitelist: internal services and premium tier users
+interface PolicySummaryProps {
+	draftId: string | null;
+	onContinue: () => void;
+}
 
-Benefits:
-• Protects against DDoS attacks and brute force attempts
-• Ensures fair service distribution across all users
-• Improves overall API reliability and performance
-• Reduces infrastructure costs by preventing resource exhaustion`}
-            />
-          </div>
+function summarizeYaml(yaml: string): string[] {
+	const lines = yaml.split("\n");
+	const summary: string[] = [];
 
-          <div>
-            <h4 className="font-semibold text-foreground mb-3">Implementation Details</h4>
-            <Textarea
-              readOnly
-              className="rounded-xl bg-muted border-0"
-              rows={4}
-              value={`Location: middleware/rate-limiter.ts
-Dependencies: redis-client, moment.js
-Environment Variables: RATE_LIMIT_ENABLED, RATE_LIMIT_THRESHOLD, RATE_LIMIT_WINDOW
+	for (const raw of lines) {
+		const line = raw.trim();
+		if (line.startsWith("kind:")) summary.push(`Kind: ${line.replace("kind:", "").trim()}`);
+		if (line.startsWith("name:")) summary.push(`Name: ${line.replace("name:", "").trim()}`);
+		if (line.startsWith("namespace:")) summary.push(`Namespace: ${line.replace("namespace:", "").trim()}`);
+		if (line.startsWith("action:")) summary.push(`Action: ${line.replace("action:", "").trim()}`);
+	}
 
-This policy will be automatically enforced upon approval.`}
-            />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
+	if (summary.length === 0) {
+		summary.push("Manifest parsed but produced no summary fields.");
+	}
+	return summary;
+}
+
+export function PolicySummary({ draftId, onContinue }: PolicySummaryProps) {
+	const { data, loading, error } = usePolicyDraft(draftId ?? "");
+
+	if (!draftId) {
+		return (
+			<Card className="rounded-2xl border-0 shadow-sm">
+				<CardContent className="pt-6 py-12 text-center text-muted-foreground">
+					<FileText className="w-8 h-8 mx-auto mb-3 opacity-60" />
+					<p className="font-medium">No draft selected</p>
+					<p className="text-sm mt-1">Pick a pending policy from the Incoming tab to review it here.</p>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	if (loading) {
+		return (
+			<Card className="rounded-2xl border-0 shadow-sm">
+				<CardContent className="pt-6 flex items-center gap-2 text-muted-foreground">
+					<Loader2 className="h-4 w-4 animate-spin" /> Loading draft…
+				</CardContent>
+			</Card>
+		);
+	}
+
+	if (error || !data?.draft) {
+		return (
+			<Card className="rounded-2xl border-0 shadow-sm">
+				<CardContent className="pt-6 text-sm text-red-600">
+					Failed to load draft: {error ?? "not found"}
+				</CardContent>
+			</Card>
+		);
+	}
+
+	const draft = data.draft;
+	const summary = summarizeYaml(draft.yamlContent);
+
+	return (
+		<div className="space-y-6">
+			<Card className="rounded-2xl border-0 shadow-sm">
+				<CardHeader>
+					<div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+						<div>
+							<CardTitle className="text-lg font-semibold">
+								{draft.service}{" "}
+								<span className="text-muted-foreground font-normal">/ {draft.namespace}</span>
+							</CardTitle>
+							<p className="text-sm text-muted-foreground mt-2">
+								Draft <span className="font-mono">{draft.draftId.slice(0, 8)}…</span> • created{" "}
+								{new Date(draft.createdAt).toLocaleString()} • by {draft.createdBy}
+							</p>
+						</div>
+						<Badge className="rounded-lg bg-blue-500/10 text-blue-700 border-blue-500/20">
+							{draft.status}
+						</Badge>
+					</div>
+				</CardHeader>
+				<CardContent className="space-y-6">
+					<div>
+						<h4 className="font-semibold text-foreground mb-2">Reason</h4>
+						<p className="text-sm text-foreground whitespace-pre-wrap bg-muted rounded-xl p-4">
+							{draft.reason}
+						</p>
+					</div>
+
+					<div>
+						<h4 className="font-semibold text-foreground mb-2">Manifest overview</h4>
+						<ul className="text-sm text-foreground bg-muted rounded-xl p-4 space-y-1 font-mono">
+							{summary.map((s, i) => (
+								<li key={i}>• {s}</li>
+							))}
+						</ul>
+					</div>
+
+					{draft.anomalyId && (
+						<div>
+							<h4 className="font-semibold text-foreground mb-2">Triggered by</h4>
+							<Link
+								href={`/anomalies/${draft.anomalyId}`}
+								className="text-primary hover:underline text-sm font-mono"
+							>
+								Anomaly {draft.anomalyId.slice(0, 8)}…
+							</Link>
+						</div>
+					)}
+
+					<div className="flex justify-end pt-2">
+						<Button onClick={onContinue} className="rounded-lg">
+							Continue to review <ArrowRight className="w-4 h-4 ml-2" />
+						</Button>
+					</div>
+				</CardContent>
+			</Card>
+		</div>
+	);
 }

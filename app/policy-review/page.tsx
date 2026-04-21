@@ -8,7 +8,9 @@ export default function PolicyReviewPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-foreground">Policy Review Workflow</h1>
-          <p className="text-muted-foreground mt-1">Review and approve AI-generated security policies</p>
+          <p className="text-muted-foreground mt-1">
+            Review and approve policy drafts generated from detected anomalies
+          </p>
         </div>
 
         {/* Workflow Tabs */}

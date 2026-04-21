@@ -1,129 +1,140 @@
-"use client"
+"use client";
 
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState } from "react"
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Loader2, Inbox } from "lucide-react";
+import { usePendingDrafts } from "@/hooks/useData";
+import { useSocketEvent } from "@/hooks/useSocket";
+import type { PolicyDraft } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
 
-const policies = [
-  {
-    id: 1,
-    name: "API Rate Limiting Policy",
-    service: "API Gateway",
-    severity: "High",
-    status: "Pending",
-    timestamp: "2025-01-24 14:22:11",
-  },
-  {
-    id: 2,
-    name: "Authentication Timeout",
-    service: "Auth Service",
-    severity: "Medium",
-    status: "Pending",
-    timestamp: "2025-01-24 13:15:44",
-  },
-  {
-    id: 3,
-    name: "Data Encryption Standard",
-    service: "Database",
-    severity: "High",
-    status: "Approved",
-    timestamp: "2025-01-24 12:08:32",
-  },
-  {
-    id: 4,
-    name: "Cache TTL Policy",
-    service: "Cache Layer",
-    severity: "Low",
-    status: "Rejected",
-    timestamp: "2025-01-24 11:42:19",
-  },
-  {
-    id: 5,
-    name: "Request Validation Rules",
-    service: "API Gateway",
-    severity: "Medium",
-    status: "Pending",
-    timestamp: "2025-01-24 10:55:07",
-  },
-]
-
-const statusColor = {
-  Pending: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  Approved: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  Rejected: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+interface IncomingPoliciesProps {
+	selectedDraftId: string | null;
+	onSelect: (draftId: string) => void;
 }
 
-const severityColor = {
-  High: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-  Medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  Low: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-}
+export function IncomingPolicies({ selectedDraftId, onSelect }: IncomingPoliciesProps) {
+	const { data, loading, error, refetch } = usePendingDrafts();
+	const [search, setSearch] = useState("");
 
-export function IncomingPolicies() {
-  const [severityFilter, setSeverityFilter] = useState("all")
+	useSocketEvent("policy.draft", () => {
+		refetch();
+	});
 
-  const filtered = severityFilter === "all" ? policies : policies.filter((p) => p.severity === severityFilter)
+	useSocketEvent("policy.applied", () => {
+		refetch();
+	});
 
-  return (
-    <div className="space-y-6">
-      {/* Filters */}
-      <Card className="rounded-2xl border-0 shadow-sm">
-        <CardContent className="pt-6">
-          <div className="flex gap-4 flex-col md:flex-row md:items-end">
-            <div className="flex-1">
-              <label className="text-sm font-medium text-foreground mb-2 block">Search Policies</label>
-              <Input placeholder="Search by name or service..." className="rounded-lg" />
-            </div>
-            <div className="w-full md:w-48">
-              <label className="text-sm font-medium text-foreground mb-2 block">Severity</label>
-              <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                <SelectTrigger className="rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Severities</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="Low">Low</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+	const drafts: PolicyDraft[] = data?.drafts ?? [];
 
-      {/* Policies List */}
-      <div className="space-y-3">
-        {filtered.map((policy) => (
-          <Card
-            key={policy.id}
-            className="rounded-2xl border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-          >
-            <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground text-base">{policy.name}</h3>
-                  <div className="flex gap-2 items-center mt-2 flex-wrap">
-                    <span className="text-sm text-muted-foreground">{policy.service}</span>
-                    <span className="text-sm text-muted-foreground">•</span>
-                    <span className="text-sm text-muted-foreground">{policy.timestamp}</span>
-                  </div>
-                </div>
-                <div className="flex gap-2 items-center flex-wrap">
-                  <Badge className={`rounded-lg ${severityColor[policy.severity as keyof typeof severityColor]}`}>
-                    {policy.severity}
-                  </Badge>
-                  <Badge className={`rounded-lg ${statusColor[policy.status as keyof typeof statusColor]}`}>
-                    {policy.status}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
+	const filtered = drafts.filter((d) => {
+		if (!search) return true;
+		const needle = search.toLowerCase();
+		return (
+			d.service.toLowerCase().includes(needle) ||
+			d.namespace.toLowerCase().includes(needle) ||
+			d.reason.toLowerCase().includes(needle)
+		);
+	});
+
+	return (
+		<div className="space-y-6">
+			{/* Filters */}
+			<Card className="rounded-2xl border-0 shadow-sm">
+				<CardContent className="pt-6">
+					<div className="flex gap-4 flex-col md:flex-row md:items-end">
+						<div className="flex-1">
+							<label className="text-sm font-medium text-foreground mb-2 block">
+								Search pending drafts
+							</label>
+							<Input
+								placeholder="Search by service, namespace, or reason…"
+								value={search}
+								onChange={(e) => setSearch(e.target.value)}
+								className="rounded-lg"
+							/>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* Drafts list */}
+			{loading ? (
+				<Card className="rounded-2xl border-0 shadow-sm">
+					<CardContent className="pt-6 flex items-center gap-2 text-muted-foreground">
+						<Loader2 className="h-4 w-4 animate-spin" /> Loading pending drafts…
+					</CardContent>
+				</Card>
+			) : error ? (
+				<Card className="rounded-2xl border-0 shadow-sm">
+					<CardContent className="pt-6 text-sm text-red-600">Failed to load drafts: {error}</CardContent>
+				</Card>
+			) : filtered.length === 0 ? (
+				<Card className="rounded-2xl border-0 shadow-sm">
+					<CardContent className="pt-6 py-10 text-center text-muted-foreground">
+						<Inbox className="w-8 h-8 mx-auto mb-3 opacity-60" />
+						<p className="font-medium">No pending policy drafts</p>
+						<p className="text-sm mt-1">
+							Drafts generated from anomalies will appear here for review.
+						</p>
+					</CardContent>
+				</Card>
+			) : (
+				<div className="space-y-3">
+					{filtered.map((draft) => {
+						const isSelected = selectedDraftId === draft.draftId;
+						return (
+							<Card
+								key={draft.draftId}
+								onClick={() => onSelect(draft.draftId)}
+								className={cn(
+									"rounded-2xl border shadow-sm hover:shadow-md transition-all cursor-pointer",
+									isSelected ? "border-primary ring-2 ring-primary/30" : "border-border/60"
+								)}
+							>
+								<CardContent className="pt-6">
+									<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+										<div className="flex-1 min-w-0">
+											<h3 className="font-semibold text-foreground text-base">
+												{draft.service}
+												<span className="text-muted-foreground font-normal">
+													{" "}
+													/ {draft.namespace}
+												</span>
+											</h3>
+											<p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+												{draft.reason}
+											</p>
+											<div className="flex gap-2 items-center mt-2 flex-wrap text-xs text-muted-foreground">
+												<span className="font-mono">{draft.draftId.slice(0, 8)}…</span>
+												<span>•</span>
+												<span>{new Date(draft.createdAt).toLocaleString()}</span>
+												<span>•</span>
+												<span>by {draft.createdBy}</span>
+											</div>
+										</div>
+										<div className="flex gap-2 items-center flex-wrap">
+											{draft.anomalyId && (
+												<Badge
+													variant="outline"
+													className="rounded-lg bg-amber-500/10 text-amber-700 border-amber-500/20"
+												>
+													From anomaly
+												</Badge>
+											)}
+											<Badge className="rounded-lg bg-blue-500/10 text-blue-700 border-blue-500/20">
+												Pending
+											</Badge>
+										</div>
+									</div>
+								</CardContent>
+							</Card>
+						);
+					})}
+				</div>
+			)}
+		</div>
+	);
 }
