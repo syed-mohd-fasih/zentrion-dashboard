@@ -8,35 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, AlertTriangle, AlertCircle } from "lucide-react";
+import Link from "next/link";
 
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useAnomalies } from "@/hooks/useData";
 import { useSocketEvent } from "@/hooks/useSocket";
 import type { Anomaly as ApiAnomaly } from "@/lib/api/types";
 
-const getSeverityBadge = (severity: string) => {
-	switch (severity) {
-		case "high":
-			return <Badge className="bg-red-500/10 text-red-700 border-red-500/20">High</Badge>;
-		case "medium":
-			return <Badge className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20">Medium</Badge>;
-		case "low":
-			return <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20">Low</Badge>;
-		default:
-			return null;
-	}
-};
-
 export default function AnomaliesPage() {
-	return (
-		<ProtectedRoute>
-			<AnomaliesContent />
-		</ProtectedRoute>
-	);
-}
-
-function AnomaliesContent() {
-	const { data, loading, refetch } = useAnomalies(5);
+	const { data, loading } = useAnomalies(5);
 	const [searchTerm, setSearchTerm] = useState("");
 	const [filterSeverity, setFilterSeverity] = useState<string | null>(null);
 	const [localAnomalies, setLocalAnomalies] = useState<ApiAnomaly[]>([]);
@@ -113,7 +92,7 @@ function AnomaliesContent() {
 						<Card className="p-8 text-center text-muted-foreground">No anomalies detected yet</Card>
 					) : (
 						filteredAnomalies.map((anomaly) => (
-							<Card key={anomaly.id} className="p-6 hover:bg-card/80 transition-colors">
+							<Card key={anomaly.anomalyId} className="p-6 hover:bg-card/80 transition-colors">
 								<div className="flex items-start justify-between gap-4 mb-4">
 									<div className="flex items-start gap-3 flex-1">
 										{anomaly.severity === "high" || anomaly.severity === "critical" ? (
@@ -172,9 +151,11 @@ function AnomaliesContent() {
 										{new Date(anomaly.timestamp).toLocaleString()}
 									</p>
 
-									<Button variant="ghost" size="sm" className="rounded-lg">
-										View Details
-									</Button>
+									<Link href={`/anomalies/${anomaly.anomalyId}`}>
+										<Button variant="ghost" size="sm" className="rounded-lg">
+											View Details
+										</Button>
+									</Link>
 								</div>
 							</Card>
 						))
