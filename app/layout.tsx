@@ -5,6 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SocketProvider } from "@/components/providers/SocketProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { Toaster } from "@/components/ui/sonner";
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
@@ -42,6 +43,7 @@ export default function RootLayout({
 				<AuthProvider>
 					<SocketProvider>{children}</SocketProvider>
 				</AuthProvider>
+				<Toaster richColors position="top-right" />
 			</body>
 		</html>
 	);
