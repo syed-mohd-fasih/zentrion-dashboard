@@ -5,20 +5,11 @@ import { MainLayout } from "@/components/layout/main-layout";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { ChartPlaceholder } from "@/components/dashboard/chart-placeholder";
 import { Activity, AlertTriangle, CheckCircle2, Zap } from "lucide-react";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useSocketEvent } from "@/hooks/useSocket";
 import { useServices } from "@/hooks/useData";
 import type { ParsedRequest } from "@/lib/api/types";
 
 export default function DashboardPage() {
-	return (
-		<ProtectedRoute>
-			<DashboardContent />
-		</ProtectedRoute>
-	);
-}
-
-function DashboardContent() {
 	const [recentLogs, setRecentLogs] = useState<ParsedRequest[]>([]);
 	const { data: servicesData, loading } = useServices();
 
@@ -47,15 +38,15 @@ function DashboardContent() {
 						{/* Stats Cards */}
 						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 							<StatsCard
-								title="Total Logs Processed"
+								title="Live Logs Seen"
 								value={totalLogsProcessed.toString()}
-								subtitle="Today"
+								subtitle="Streaming via WebSocket"
 								icon={<Activity className="w-5 h-5" />}
 							/>
 							<StatsCard
-								title="Anomalies Detected"
+								title="4xx/5xx Responses"
 								value={anomaliesDetected.toString()}
-								subtitle="Today"
+								subtitle="In live stream"
 								icon={<AlertTriangle className="w-5 h-5" />}
 							/>
 
