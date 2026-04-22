@@ -125,7 +125,16 @@ function ChartTooltipContent({
     indicator?: 'line' | 'dot' | 'dashed'
     nameKey?: string
     labelKey?: string
-    payload?: RechartsPrimitive.TooltipProps<number | string, string>['payload']
+    payload?: Array<{
+      value?: number | string | (number | string)[]
+      name?: string | number
+      dataKey?: string | number
+      color?: string
+      fill?: string
+      payload?: Record<string, unknown>
+      [key: string]: unknown
+    }>
+    label?: string | number
   }) {
   const { config } = useChart()
 
@@ -183,7 +192,7 @@ function ChartTooltipContent({
         {payload.map((item, index) => {
           const key = `${nameKey || item.name || item.dataKey || 'value'}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
-          const indicatorColor = color || item.payload.fill || item.color
+          const indicatorColor = color || item.payload?.fill || item.color
 
           return (
             <div
@@ -194,7 +203,8 @@ function ChartTooltipContent({
               )}
             >
               {formatter && item?.value !== undefined && item.name ? (
-                formatter(item.value, item.name, item, index, item.payload)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter(item.value as any, item.name as any, item as any, index, item.payload as any)
               ) : (
                 <>
                   {itemConfig?.icon ? (
@@ -258,7 +268,17 @@ function ChartLegendContent({
   verticalAlign = 'bottom',
   nameKey,
 }: React.ComponentProps<'div'> &
-  Pick<RechartsPrimitive.LegendProps, 'payload' | 'verticalAlign'> & {
+  {
+    payload?: Array<{
+      value?: string
+      type?: string
+      id?: string
+      color?: string
+      dataKey?: string | number
+      [key: string]: unknown
+    }>
+    verticalAlign?: 'top' | 'middle' | 'bottom'
+  } & {
     hideIcon?: boolean
     nameKey?: string
   }) {
