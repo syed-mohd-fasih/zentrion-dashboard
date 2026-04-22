@@ -125,6 +125,7 @@ function ChartTooltipContent({
     indicator?: 'line' | 'dot' | 'dashed'
     nameKey?: string
     labelKey?: string
+    payload?: RechartsPrimitive.TooltipProps<number | string, string>['payload']
   }) {
   const { config } = useChart()
 
