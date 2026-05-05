@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from "./client";
-import type { User, ParsedRequest, ServiceInfo, Anomaly, PolicyDraft, PolicyHistory, AuthorizationRule } from "./types";
+import type { User, ParsedRequest, ServiceInfo, Anomaly, PolicyDraft, PolicyHistory, AuthorizationRule, SystemSetting, SandboxResult, LlmPolicyResponse, HealthResponse } from "./types";
 
 // ============================================
 // AUTH SERVICE
@@ -243,6 +243,47 @@ export const policyService = {
 			timestamp: string;
 		}>(endpoint);
 	},
+
+	/**
+	 * Run sandbox simulation for a policy draft
+	 */
+	async simulate(id: string, windowHours?: number) {
+		const query = windowHours ? `?windowHours=${windowHours}` : "";
+		return apiClient.post<{
+			result: SandboxResult;
+			timestamp: string;
+		}>(`/policies/drafts/${id}/simulate${query}`);
+	},
+
+	/**
+	 * Get LLM explanation for a policy draft (404 if not ready yet)
+	 */
+	async getExplanation(id: string) {
+		return apiClient.get<{
+			explanation: LlmPolicyResponse;
+			timestamp: string;
+		}>(`/policies/drafts/${id}/explain`);
+	},
+};
+
+// ============================================
+// SETTINGS SERVICE
+// ============================================
+
+export const settingsService = {
+	async getAll() {
+		return apiClient.get<{
+			settings: SystemSetting[];
+			timestamp: string;
+		}>("/settings");
+	},
+
+	async update(key: string, value: string) {
+		return apiClient.patch<{
+			setting: SystemSetting;
+			timestamp: string;
+		}>("/settings", { key, value });
+	},
 };
 
 // ============================================
@@ -250,15 +291,7 @@ export const policyService = {
 // ============================================
 
 export const healthService = {
-	/**
-	 * Check API health
-	 */
 	async check() {
-		return apiClient.get<{
-			status: string;
-			timestamp: string;
-			service: string;
-			version: string;
-		}>("/health", false);
+		return apiClient.get<HealthResponse>("/health", false);
 	},
 };

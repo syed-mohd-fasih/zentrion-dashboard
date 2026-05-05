@@ -93,6 +93,50 @@ export interface Anomaly {
 
 export type PolicyStatus = "pending" | "approved" | "rejected" | "applied";
 
+export interface SandboxResult {
+	totalLogsEvaluated: number;
+	wouldBlock: Array<{
+		id: string;
+		sourceIp: string;
+		path: string;
+		service: string;
+		method: string;
+	}>;
+	wouldAllow: number;
+	effectivenessScore: number;
+	falsePositiveRisk: number;
+	anomalyLogsBlocked: number;
+}
+
+export interface LlmPolicyResponse {
+	explanation: string;
+	severityReasoning: string;
+	policyYaml: string;
+	policyReasoning: string;
+	estimatedImpact: string;
+	alternatives: string[];
+}
+
+export interface SystemSetting {
+	id: string;
+	key: string;
+	value: string;
+	updatedAt: string;
+}
+
+export interface HealthResponse {
+	status: string;
+	timestamp: string;
+	service: string;
+	version: string;
+	ai?: {
+		detectionMode: "rules" | "ai";
+		ollama: boolean;
+		mlService: boolean;
+		model: string;
+	};
+}
+
 export interface PolicyDraft {
 	/** Internal database primary key. Prefer `draftId` for lookups. */
 	id: string;
@@ -110,6 +154,8 @@ export interface PolicyDraft {
 	rejectedBy?: string;
 	rejectionReason?: string;
 	anomalyId?: string;
+	llmExplanation?: string;
+	sandboxResult?: SandboxResult;
 }
 
 export interface PolicyHistory {

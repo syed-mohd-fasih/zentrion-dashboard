@@ -7,7 +7,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { telemetryService, anomalyService, policyService } from "@/lib/api/services";
+import { telemetryService, anomalyService, policyService, settingsService } from "@/lib/api/services";
 // import type { ParsedRequest, ServiceInfo, Anomaly, PolicyDraft, PolicyHistory } from "@/lib/api/types";
 
 interface UseDataResult<T> {
@@ -175,6 +175,34 @@ function useMutation<TData, TVariables>(
 	};
 
 	return { mutate, loading, error, data, reset };
+}
+
+// ============================================
+// SETTINGS HOOKS
+// ============================================
+
+export function useSettings() {
+	return useData(() => settingsService.getAll(), []);
+}
+
+export function useUpdateSetting() {
+	return useMutation(({ key, value }: { key: string; value: string }) =>
+		settingsService.update(key, value)
+	);
+}
+
+// AI-specific policy hooks
+export function usePolicyExplanation(draftId: string | null) {
+	return useData(
+		() => draftId ? policyService.getExplanation(draftId) : Promise.resolve(null),
+		[draftId]
+	);
+}
+
+export function useSimulateDraft() {
+	return useMutation(({ id, windowHours }: { id: string; windowHours?: number }) =>
+		policyService.simulate(id, windowHours)
+	);
 }
 
 // Policy mutations

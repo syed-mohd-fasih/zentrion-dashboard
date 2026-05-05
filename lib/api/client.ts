@@ -126,6 +126,20 @@ class ApiClient {
 	}
 
 	/**
+	 * PATCH request
+	 */
+	async patch<T>(endpoint: string, body?: any, includeAuth = true): Promise<T> {
+		return this.request<T>(
+			endpoint,
+			{
+				method: "PATCH",
+				data: body ? JSON.stringify(body) : undefined,
+			},
+			includeAuth
+		);
+	}
+
+	/**
 	 * DELETE request
 	 */
 	async delete<T>(endpoint: string, includeAuth = true): Promise<T> {

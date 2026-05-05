@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, FileText, ArrowRight } from "lucide-react";
+import { Loader2, FileText, ArrowRight, Sparkles } from "lucide-react";
 import { usePolicyDraft } from "@/hooks/useData";
+import { ExplainDrawer } from "./explain-drawer";
 
 interface PolicySummaryProps {
 	draftId: string | null;
@@ -32,6 +34,7 @@ function summarizeYaml(yaml: string): string[] {
 
 export function PolicySummary({ draftId, onContinue }: PolicySummaryProps) {
 	const { data, loading, error } = usePolicyDraft(draftId ?? "");
+	const [explainOpen, setExplainOpen] = useState(false);
 
 	if (!draftId) {
 		return (
@@ -70,6 +73,13 @@ export function PolicySummary({ draftId, onContinue }: PolicySummaryProps) {
 
 	return (
 		<div className="space-y-6">
+			{draftId && (
+				<ExplainDrawer
+					draftId={draftId}
+					open={explainOpen}
+					onClose={() => setExplainOpen(false)}
+				/>
+			)}
 			<Card className="rounded-2xl border-0 shadow-sm">
 				<CardHeader>
 					<div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
@@ -117,7 +127,15 @@ export function PolicySummary({ draftId, onContinue }: PolicySummaryProps) {
 						</div>
 					)}
 
-					<div className="flex justify-end pt-2">
+					<div className="flex items-center justify-between pt-2">
+						<Button
+							variant="outline"
+							className="rounded-lg"
+							onClick={() => setExplainOpen(true)}
+						>
+							<Sparkles className="w-4 h-4 mr-2 text-blue-500" />
+							Explain with AI
+						</Button>
 						<Button onClick={onContinue} className="rounded-lg">
 							Continue to review <ArrowRight className="w-4 h-4 ml-2" />
 						</Button>

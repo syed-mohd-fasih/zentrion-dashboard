@@ -12,7 +12,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, FileText, Check, X } from "lucide-react";
+import { Loader2, FileText, Check, X, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import {
 	useActivePolicies,
@@ -21,6 +21,7 @@ import {
 	useRejectPolicyDraft,
 } from "@/hooks/useData";
 import { useAuth } from "@/hooks/useAuth";
+import { SimulateModal } from "./simulate-modal";
 
 interface DiffViewerProps {
 	draftId: string | null;
@@ -36,6 +37,7 @@ export function DiffViewer({ draftId, onAfterAction }: DiffViewerProps) {
 
 	const [rejectOpen, setRejectOpen] = useState(false);
 	const [rejectReason, setRejectReason] = useState("");
+	const [simulateOpen, setSimulateOpen] = useState(false);
 
 	const canApprove = user?.role === "ADMIN";
 	const canReject = user?.role === "ADMIN" || user?.role === "ANALYST";
@@ -109,6 +111,13 @@ export function DiffViewer({ draftId, onAfterAction }: DiffViewerProps) {
 
 	return (
 		<div className="space-y-6">
+			{draft && (
+				<SimulateModal
+					draftId={draft.draftId}
+					open={simulateOpen}
+					onClose={() => setSimulateOpen(false)}
+				/>
+			)}
 			<Card className="rounded-2xl border-0 shadow-sm">
 				<CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
 					<div>
@@ -117,7 +126,15 @@ export function DiffViewer({ draftId, onAfterAction }: DiffViewerProps) {
 							{draft.service} / {draft.namespace}
 						</p>
 					</div>
-					<div className="flex gap-2">
+					<div className="flex gap-2 flex-wrap">
+						<Button
+							variant="outline"
+							onClick={() => setSimulateOpen(true)}
+							className="rounded-lg"
+						>
+							<FlaskConical className="w-4 h-4 mr-1 text-blue-500" />
+							Simulate
+						</Button>
 						<Button
 							variant="outline"
 							disabled={!canApprove || approve.loading}
