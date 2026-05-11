@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { MainLayout } from "@/components/layout/main-layout";
@@ -7,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, AlertTriangle, AlertCircle } from "lucide-react";
+import { Search, AlertTriangle, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 import { useAnomalies } from "@/hooks/useData";
@@ -15,27 +14,22 @@ import { useSocketEvent } from "@/hooks/useSocket";
 import type { Anomaly as ApiAnomaly } from "@/lib/api/types";
 
 export default function AnomaliesPage() {
-	const { data, loading } = useAnomalies(5);
+	const { data, loading, refetch } = useAnomalies();
 	const [searchTerm, setSearchTerm] = useState("");
 	const [filterSeverity, setFilterSeverity] = useState<string | null>(null);
 	const [localAnomalies, setLocalAnomalies] = useState<ApiAnomaly[]>([]);
 
-	// Merge live socket anomalies with API data
 	const allAnomalies: ApiAnomaly[] = [...localAnomalies, ...(data?.anomalies || [])];
 
-	// Socket subscription
 	useSocketEvent("anomaly.created", (anomaly: ApiAnomaly) => {
 		setLocalAnomalies((prev) => [anomaly, ...prev]);
 	});
 
-	// Your existing filter logic
 	const filteredAnomalies = allAnomalies.filter((a) => {
 		const matchesSearch =
 			a.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			a.type.toLowerCase().includes(searchTerm.toLowerCase());
-
 		const matchesSeverity = !filterSeverity || a.severity === filterSeverity;
-
 		return matchesSearch && matchesSeverity;
 	});
 
@@ -48,8 +42,20 @@ export default function AnomaliesPage() {
 						<h1 className="text-4xl font-bold text-foreground mb-2">Anomalies</h1>
 						<p className="text-muted-foreground">Detected security anomalies and suspicious activities</p>
 					</div>
-
-					{/* <Button onClick={refetch}>Refresh</Button> */}
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => refetch()}
+						disabled={loading}
+						className="rounded-lg"
+					>
+						{loading ? (
+							<Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+						) : (
+							<RefreshCw className="w-4 h-4 mr-1.5" />
+						)}
+						Refresh
+					</Button>
 				</div>
 
 				{/* Filters */}
@@ -71,8 +77,7 @@ export default function AnomaliesPage() {
 						>
 							All Severities
 						</Button>
-
-						{["high", "medium", "low"].map((sev) => (
+						{["critical", "high", "medium", "low"].map((sev) => (
 							<Button
 								key={sev}
 								variant={filterSeverity === sev ? "default" : "ghost"}
@@ -103,16 +108,10 @@ export default function AnomaliesPage() {
 
 										<div className="flex-1 min-w-0">
 											<h3 className="font-semibold text-foreground mb-1">{anomaly.type}</h3>
-
 											<p className="text-sm text-muted-foreground mb-2">
 												Service: {anomaly.service}
 											</p>
-
-											{"details" in anomaly && (
-												<p className="text-sm text-muted-foreground">
-													{(anomaly as any).details}
-												</p>
-											)}
+											<p className="text-sm text-muted-foreground">{anomaly.details}</p>
 										</div>
 									</div>
 
@@ -131,18 +130,16 @@ export default function AnomaliesPage() {
 											{anomaly.severity.toUpperCase()}
 										</Badge>
 
-										{"status" in anomaly && (
-											<Badge
-												variant="outline"
-												className={
-													(anomaly as any).status === "resolved"
-														? "bg-green-500/10 text-green-700 border-green-500/20"
-														: "bg-orange-500/10 text-orange-700 border-orange-500/20"
-												}
-											>
-												{(anomaly as any).status === "resolved" ? "Resolved" : "Unresolved"}
-											</Badge>
-										)}
+										<Badge
+											variant="outline"
+											className={
+												anomaly.resolved
+													? "bg-green-500/10 text-green-700 border-green-500/20"
+													: "bg-orange-500/10 text-orange-700 border-orange-500/20"
+											}
+										>
+											{anomaly.resolved ? "Resolved" : "Unresolved"}
+										</Badge>
 									</div>
 								</div>
 
@@ -150,7 +147,6 @@ export default function AnomaliesPage() {
 									<p className="text-xs text-muted-foreground">
 										{new Date(anomaly.timestamp).toLocaleString()}
 									</p>
-
 									<Link href={`/anomalies/${anomaly.anomalyId}`}>
 										<Button variant="ghost" size="sm" className="rounded-lg">
 											View Details
@@ -162,7 +158,6 @@ export default function AnomaliesPage() {
 					)}
 				</div>
 
-				{/* Results Info */}
 				<div className="mt-6 text-sm text-muted-foreground">Showing {filteredAnomalies.length} anomalies</div>
 			</div>
 		</MainLayout>

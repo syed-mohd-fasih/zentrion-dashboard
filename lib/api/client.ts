@@ -147,6 +147,58 @@ class ApiClient {
 	}
 
 	/**
+	 * Stream a Server-Sent Events response. Each `data: {...}` line is parsed
+	 * as JSON and passed to `onEvent`. Resolves when the stream closes.
+	 */
+	async streamSSE(
+		endpoint: string,
+		body: any,
+		onEvent: (e: { token?: string; done?: boolean; error?: string }) => void,
+		signal?: AbortSignal,
+	): Promise<void> {
+		const token = this.getToken();
+		const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "text/event-stream",
+				...(token ? { Authorization: `Bearer ${token}` } : {}),
+			},
+			body: JSON.stringify(body),
+			signal,
+		});
+
+		if (!res.ok) {
+			const text = await res.text().catch(() => "");
+			throw new ApiError(text || `Stream failed (${res.status})`, res.status);
+		}
+		if (!res.body) throw new ApiError("No response body for SSE stream", 0);
+
+		const reader = res.body.getReader();
+		const decoder = new TextDecoder();
+		let buf = "";
+		// eslint-disable-next-line no-constant-condition
+		while (true) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			buf += decoder.decode(value, { stream: true });
+			let nl: number;
+			while ((nl = buf.indexOf("\n")) !== -1) {
+				const line = buf.slice(0, nl).trimEnd();
+				buf = buf.slice(nl + 1);
+				if (!line || !line.startsWith("data:")) continue;
+				const payload = line.slice(5).trim();
+				if (!payload) continue;
+				try {
+					onEvent(JSON.parse(payload));
+				} catch {
+					// ignore malformed lines
+				}
+			}
+		}
+	}
+
+	/**
 	 * Build query string from params object
 	 */
 	buildQueryString(params: Record<string, any>): string {

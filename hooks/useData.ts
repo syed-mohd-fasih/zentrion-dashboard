@@ -6,8 +6,9 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { telemetryService, anomalyService, policyService, settingsService } from "@/lib/api/services";
+import type { ChatMessage, LlmPolicyResponse } from "@/lib/api/types";
 // import type { ParsedRequest, ServiceInfo, Anomaly, PolicyDraft, PolicyHistory } from "@/lib/api/types";
 
 interface UseDataResult<T> {
@@ -191,6 +192,131 @@ export function useUpdateSetting() {
 	);
 }
 
+export function useComplianceScore() {
+	return useData(() => policyService.getComplianceScore(), []);
+}
+
+function formatSeedExplanation(exp: LlmPolicyResponse): string {
+	const parts: string[] = [];
+	if (exp.explanation) parts.push(`**Explanation**\n${exp.explanation}`);
+	if (exp.severityReasoning) parts.push(`**Severity reasoning**\n${exp.severityReasoning}`);
+	if (exp.policyReasoning) parts.push(`**Policy reasoning**\n${exp.policyReasoning}`);
+	if (exp.estimatedImpact) parts.push(`**Estimated impact**\n${exp.estimatedImpact}`);
+	if (exp.alternatives?.length) {
+		parts.push(`**Alternative approaches**\n${exp.alternatives.map((a) => `• ${a}`).join("\n")}`);
+	}
+	return parts.join("\n\n");
+}
+
+export function usePolicyChat(draftId: string | null) {
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [loading, setLoading] = useState(false);
+	const [isStreaming, setIsStreaming] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const abortRef = useRef<AbortController | null>(null);
+
+	useEffect(() => {
+		if (!draftId) return;
+		let cancelled = false;
+		setLoading(true);
+		setError(null);
+		(async () => {
+			try {
+				const hist = await policyService.getChatHistory(draftId);
+				if (cancelled) return;
+				if (hist.messages && hist.messages.length > 0) {
+					setMessages(hist.messages);
+				} else {
+					// Seed with the structured explanation.
+					try {
+						const seed = await policyService.getExplanation(draftId);
+						if (cancelled) return;
+						if (seed?.explanation) {
+							setMessages([
+								{
+									role: "assistant",
+									content: formatSeedExplanation(seed.explanation),
+									timestamp: seed.timestamp ?? new Date().toISOString(),
+								},
+							]);
+						} else {
+							setMessages([]);
+						}
+					} catch {
+						setMessages([]);
+					}
+				}
+			} catch (err: any) {
+				if (!cancelled) setError(err.message ?? "Failed to load chat");
+			} finally {
+				if (!cancelled) setLoading(false);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [draftId]);
+
+	const sendMessage = useCallback(
+		async (text: string) => {
+			if (!draftId || !text.trim()) return;
+			const userTurn: ChatMessage = {
+				role: "user",
+				content: text.trim(),
+				timestamp: new Date().toISOString(),
+			};
+			const assistantTurn: ChatMessage = {
+				role: "assistant",
+				content: "",
+				timestamp: new Date().toISOString(),
+			};
+			setMessages((prev) => [...prev, userTurn, assistantTurn]);
+			setError(null);
+			setIsStreaming(true);
+
+			const controller = new AbortController();
+			abortRef.current = controller;
+			try {
+				await policyService.streamChat(
+					draftId,
+					userTurn.content,
+					(evt) => {
+						if (evt.error) {
+							setError(evt.error);
+							return;
+						}
+						if (evt.token) {
+							setMessages((prev) => {
+								const next = [...prev];
+								const last = next[next.length - 1];
+								if (last && last.role === "assistant") {
+									next[next.length - 1] = { ...last, content: last.content + evt.token };
+								}
+								return next;
+							});
+						}
+					},
+					controller.signal,
+				);
+			} catch (err: any) {
+				if (err?.name !== "AbortError") {
+					setError(err.message ?? "Chat failed");
+				}
+			} finally {
+				setIsStreaming(false);
+				abortRef.current = null;
+			}
+		},
+		[draftId],
+	);
+
+	const cancel = useCallback(() => {
+		abortRef.current?.abort();
+	}, []);
+
+	return { messages, loading, isStreaming, error, sendMessage, cancel };
+}
+
 // AI-specific policy hooks
 export function usePolicyExplanation(draftId: string | null) {
 	return useData(
@@ -220,4 +346,16 @@ export function useApprovePolicyDraft() {
 
 export function useRejectPolicyDraft() {
 	return useMutation(({ id, reason }: { id: string; reason: string }) => policyService.rejectDraft(id, reason));
+}
+
+export function useResolveAnomaly() {
+	return useMutation((id: string) => anomalyService.resolveAnomaly(id));
+}
+
+export function useBlockSourceIp() {
+	return useMutation((id: string) => anomalyService.blockSourceIp(id));
+}
+
+export function useWhitelistSource() {
+	return useMutation((id: string) => anomalyService.whitelistSource(id));
 }

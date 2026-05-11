@@ -117,6 +117,19 @@ export interface LlmPolicyResponse {
 	alternatives: string[];
 }
 
+export interface ComplianceScore {
+  score: number | null;
+  summary: string | null;
+  cached: boolean;
+  timestamp: string;
+}
+
+export interface ChatMessage {
+	role: "user" | "assistant";
+	content: string;
+	timestamp: string;
+}
+
 export interface SystemSetting {
 	id: string;
 	key: string;

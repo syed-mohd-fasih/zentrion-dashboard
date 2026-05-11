@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from "./client";
-import type { User, ParsedRequest, ServiceInfo, Anomaly, PolicyDraft, PolicyHistory, AuthorizationRule, SystemSetting, SandboxResult, LlmPolicyResponse, HealthResponse } from "./types";
+import type { User, ParsedRequest, ServiceInfo, Anomaly, PolicyDraft, PolicyHistory, AuthorizationRule, SystemSetting, SandboxResult, LlmPolicyResponse, HealthResponse, ComplianceScore, ChatMessage } from "./types";
 
 // ============================================
 // AUTH SERVICE
@@ -138,6 +138,18 @@ export const anomalyService = {
 			timestamp: string;
 		}>(`/anomalies/service/${service}`);
 	},
+
+	async resolveAnomaly(id: string) {
+		return apiClient.patch<{ anomaly: Anomaly; timestamp: string }>(`/anomalies/${id}/resolve`);
+	},
+
+	async blockSourceIp(id: string) {
+		return apiClient.post<{ draft: PolicyDraft; message: string; timestamp: string }>(`/anomalies/${id}/block-ip`);
+	},
+
+	async whitelistSource(id: string) {
+		return apiClient.patch<{ anomaly: Anomaly; timestamp: string }>(`/anomalies/${id}/whitelist`);
+	},
 };
 
 // ============================================
@@ -263,6 +275,30 @@ export const policyService = {
 			explanation: LlmPolicyResponse;
 			timestamp: string;
 		}>(`/policies/drafts/${id}/explain`);
+	},
+
+	async getComplianceScore() {
+		return apiClient.get<ComplianceScore>("/policies/compliance");
+	},
+
+	async getChatHistory(id: string) {
+		return apiClient.get<{ messages: ChatMessage[]; timestamp: string }>(
+			`/policies/drafts/${id}/chat`,
+		);
+	},
+
+	async streamChat(
+		id: string,
+		message: string,
+		onEvent: (e: { token?: string; done?: boolean; error?: string }) => void,
+		signal?: AbortSignal,
+	) {
+		return apiClient.streamSSE(
+			`/policies/drafts/${id}/chat`,
+			{ message },
+			onEvent,
+			signal,
+		);
 	},
 };
 
