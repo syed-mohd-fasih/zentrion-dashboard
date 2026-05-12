@@ -2,11 +2,14 @@
 
 import { MainLayout } from "@/components/layout/main-layout";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, AlertTriangle, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty";
+import { Search, AlertTriangle, AlertCircle, RefreshCw, Loader2, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 import { useAnomalies } from "@/hooks/useData";
@@ -90,71 +93,98 @@ export default function AnomaliesPage() {
 				</div>
 
 				{/* Anomalies List */}
-				<div className="space-y-4">
-					{loading ? (
-						<Card className="p-8 text-center text-muted-foreground">Loading anomalies...</Card>
+				<div className="space-y-3">
+					{loading && allAnomalies.length === 0 ? (
+						<>
+							{[1, 2, 3, 4].map((i) => (
+								<Card key={i} className="p-6 space-y-3">
+									<div className="flex justify-between">
+										<Skeleton className="h-4 w-48" />
+										<Skeleton className="h-6 w-16 rounded-full" />
+									</div>
+									<Skeleton className="h-3 w-32" />
+									<Skeleton className="h-3 w-full" />
+								</Card>
+							))}
+						</>
 					) : filteredAnomalies.length === 0 ? (
-						<Card className="p-8 text-center text-muted-foreground">No anomalies detected yet</Card>
+						<EmptyState
+							icon={ShieldCheck}
+							title={
+								allAnomalies.length === 0
+									? "No anomalies detected"
+									: "No anomalies match your filters"
+							}
+							description={
+								allAnomalies.length === 0
+									? "Your services are healthy. New anomalies will appear here in real time."
+									: "Try clearing the search or selecting a different severity."
+							}
+						/>
 					) : (
-						filteredAnomalies.map((anomaly) => (
-							<Card key={anomaly.anomalyId} className="p-6 hover:bg-card/80 transition-colors">
-								<div className="flex items-start justify-between gap-4 mb-4">
-									<div className="flex items-start gap-3 flex-1">
-										{anomaly.severity === "high" || anomaly.severity === "critical" ? (
-											<AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-										) : (
-											<AlertCircle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
-										)}
+						filteredAnomalies.map((anomaly, i) => {
+							const severityClass =
+								anomaly.severity === "critical" || anomaly.severity === "high"
+									? "bg-destructive/10 text-destructive border-destructive/20"
+									: anomaly.severity === "medium"
+										? "bg-warning/10 text-warning border-warning/20"
+										: "bg-primary/10 text-primary border-primary/20";
+							return (
+								<motion.div
+									key={anomaly.anomalyId}
+									initial={{ opacity: 0, y: 6 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ duration: 0.2, delay: Math.min(i * 0.03, 0.3) }}
+								>
+									<Card className="p-5 hover:bg-card/80 hover:border-primary/30 transition-all">
+										<div className="flex items-start justify-between gap-4 mb-3">
+											<div className="flex items-start gap-3 flex-1 min-w-0">
+												{anomaly.severity === "high" || anomaly.severity === "critical" ? (
+													<AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+												) : (
+													<AlertCircle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+												)}
 
-										<div className="flex-1 min-w-0">
-											<h3 className="font-semibold text-foreground mb-1">{anomaly.type}</h3>
-											<p className="text-sm text-muted-foreground mb-2">
-												Service: {anomaly.service}
-											</p>
-											<p className="text-sm text-muted-foreground">{anomaly.details}</p>
+												<div className="flex-1 min-w-0">
+													<h3 className="font-semibold text-foreground mb-1">
+														{anomaly.type}
+													</h3>
+													<p className="text-xs text-muted-foreground mb-1.5 font-mono">
+														{anomaly.service}
+													</p>
+													<p className="text-sm text-muted-foreground">{anomaly.details}</p>
+												</div>
+											</div>
+
+											<div className="flex items-center gap-2 shrink-0">
+												<Badge className={severityClass}>{anomaly.severity.toUpperCase()}</Badge>
+												<Badge
+													variant="outline"
+													className={
+														anomaly.resolved
+															? "bg-success/10 text-success border-success/20"
+															: "bg-warning/10 text-warning border-warning/20"
+													}
+												>
+													{anomaly.resolved ? "Resolved" : "Unresolved"}
+												</Badge>
+											</div>
 										</div>
-									</div>
 
-									<div className="flex items-center gap-2">
-										<Badge
-											className={
-												anomaly.severity === "critical"
-													? "bg-red-500/10 text-red-700 border-red-500/20"
-													: anomaly.severity === "high"
-													? "bg-red-500/10 text-red-700 border-red-500/20"
-													: anomaly.severity === "medium"
-													? "bg-yellow-500/10 text-yellow-700 border-yellow-500/20"
-													: "bg-blue-500/10 text-blue-700 border-blue-500/20"
-											}
-										>
-											{anomaly.severity.toUpperCase()}
-										</Badge>
-
-										<Badge
-											variant="outline"
-											className={
-												anomaly.resolved
-													? "bg-green-500/10 text-green-700 border-green-500/20"
-													: "bg-orange-500/10 text-orange-700 border-orange-500/20"
-											}
-										>
-											{anomaly.resolved ? "Resolved" : "Unresolved"}
-										</Badge>
-									</div>
-								</div>
-
-								<div className="flex items-center justify-between">
-									<p className="text-xs text-muted-foreground">
-										{new Date(anomaly.timestamp).toLocaleString()}
-									</p>
-									<Link href={`/anomalies/${anomaly.anomalyId}`}>
-										<Button variant="ghost" size="sm" className="rounded-lg">
-											View Details
-										</Button>
-									</Link>
-								</div>
-							</Card>
-						))
+										<div className="flex items-center justify-between">
+											<p className="text-xs text-muted-foreground font-mono">
+												{new Date(anomaly.timestamp).toLocaleString()}
+											</p>
+											<Link href={`/anomalies/${anomaly.anomalyId}`}>
+												<Button variant="ghost" size="sm" className="rounded-lg">
+													View Details
+												</Button>
+											</Link>
+										</div>
+									</Card>
+								</motion.div>
+							);
+						})
 					)}
 				</div>
 

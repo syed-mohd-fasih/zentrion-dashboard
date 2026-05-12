@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { MainLayout } from "@/components/layout/main-layout";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -101,6 +102,7 @@ export default function SettingsPage() {
 
   return (
     <MainLayout>
+      <ProtectedRoute allowedRoles={["ADMIN", "ANALYST"]}>
       <TooltipProvider>
         <div className="p-6 space-y-8 max-w-4xl">
           <div>
@@ -338,6 +340,7 @@ export default function SettingsPage() {
           </Card>
         </div>
       </TooltipProvider>
+      </ProtectedRoute>
     </MainLayout>
   );
 }

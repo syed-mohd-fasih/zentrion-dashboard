@@ -27,8 +27,8 @@ function bucketKey(timestamp: string): string {
 }
 
 const chartConfig = {
-  avgLatency: { label: "Avg Latency (ms)", color: "hsl(var(--chart-1))" },
-  errorRate: { label: "Error Rate (%)", color: "hsl(var(--chart-2))" },
+  avgLatency: { label: "Avg Latency (ms)", color: "var(--chart-1)" },
+  errorRate: { label: "Error Rate (%)", color: "var(--chart-5)" },
 };
 
 export function ServiceHealthChart() {
@@ -82,7 +82,7 @@ export function ServiceHealthChart() {
   const hasData = data.length > 0;
 
   return (
-    <Card className="rounded-2xl border-0 shadow-sm">
+    <Card>
       <CardHeader>
         <CardTitle className="text-lg font-semibold">Service Health Over Time</CardTitle>
         <p className="text-sm text-muted-foreground mt-1">Live latency and error rate per minute</p>
@@ -99,15 +99,15 @@ export function ServiceHealthChart() {
               <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="latencyGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-avgLatency)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--color-avgLatency)" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--color-avgLatency)" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="var(--color-avgLatency)" stopOpacity={0.02} />
                   </linearGradient>
                   <linearGradient id="errorGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-errorRate)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--color-errorRate)" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--color-errorRate)" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="var(--color-errorRate)" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
                 <XAxis
                   dataKey="time"
                   tick={{ fontSize: 11 }}
@@ -156,6 +156,18 @@ export function ServiceHealthChart() {
               </AreaChart>
             </ResponsiveContainer>
           </ChartContainer>
+        )}
+
+        {/* Legend */}
+        {hasData && (
+          <div className="flex items-center gap-5 mt-3 pt-3 border-t border-border/40 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-3 rounded-sm bg-chart-1" /> Latency (ms)
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-3 rounded-sm bg-chart-5" /> Error rate (%)
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 
 import { cn } from '@/lib/utils'
@@ -7,11 +8,49 @@ function Empty({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="empty"
       className={cn(
-        'flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-lg border-dashed p-6 text-center text-balance md:p-12',
+        'flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-2xl border border-dashed border-border bg-card/30 p-8 text-center text-balance md:p-12',
         className,
       )}
       {...props}
     />
+  )
+}
+
+/**
+ * Convenience wrapper for the common "empty state" shape:
+ * icon + title + description + optional action button.
+ *
+ * Prefer this over composing Empty/EmptyHeader/EmptyMedia/etc by hand —
+ * the composable parts still exist for one-off layouts.
+ */
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+  className,
+}: {
+  icon?: React.ComponentType<{ className?: string }>
+  title: React.ReactNode
+  description?: React.ReactNode
+  action?: React.ReactNode
+  className?: string
+}) {
+  return (
+    <Empty className={className}>
+      {Icon && (
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+          <Icon className="h-5 w-5 text-primary" />
+        </div>
+      )}
+      <div className="space-y-1.5 max-w-sm">
+        <p className="text-base font-medium tracking-tight text-foreground">{title}</p>
+        {description && (
+          <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+        )}
+      </div>
+      {action && <div className="pt-1">{action}</div>}
+    </Empty>
   )
 }
 
@@ -96,6 +135,7 @@ function EmptyContent({ className, ...props }: React.ComponentProps<'div'>) {
 
 export {
   Empty,
+  EmptyState,
   EmptyHeader,
   EmptyTitle,
   EmptyDescription,

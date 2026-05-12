@@ -8,11 +8,28 @@
 // USER & AUTH TYPES
 // ============================================
 
+export type UserRole = "ADMIN" | "ANALYST" | "VIEWER";
+
 export interface User {
 	id: string;
 	username: string;
-	role: "ADMIN" | "ANALYST" | "VIEWER";
+	role: UserRole;
 	email: string;
+	createdAt: string;
+	/** True until the user has seen (or skipped) the onboarding tour. */
+	firstLogin?: boolean;
+}
+
+/**
+ * Public-shape user record returned by the admin `GET /users` endpoint.
+ * The password hash is never serialized.
+ */
+export interface AdminUser {
+	id: string;
+	username: string;
+	role: UserRole;
+	email: string | null;
+	firstLogin: boolean;
 	createdAt: string;
 }
 

@@ -7,8 +7,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { telemetryService, anomalyService, policyService, settingsService } from "@/lib/api/services";
-import type { ChatMessage, LlmPolicyResponse } from "@/lib/api/types";
+import { telemetryService, anomalyService, policyService, settingsService, usersService } from "@/lib/api/services";
+import type { UserRole } from "@/lib/api/types";
+import type { ChatMessage } from "@/lib/api/types";
 // import type { ParsedRequest, ServiceInfo, Anomaly, PolicyDraft, PolicyHistory } from "@/lib/api/types";
 
 interface UseDataResult<T> {
@@ -196,18 +197,6 @@ export function useComplianceScore() {
 	return useData(() => policyService.getComplianceScore(), []);
 }
 
-function formatSeedExplanation(exp: LlmPolicyResponse): string {
-	const parts: string[] = [];
-	if (exp.explanation) parts.push(`**Explanation**\n${exp.explanation}`);
-	if (exp.severityReasoning) parts.push(`**Severity reasoning**\n${exp.severityReasoning}`);
-	if (exp.policyReasoning) parts.push(`**Policy reasoning**\n${exp.policyReasoning}`);
-	if (exp.estimatedImpact) parts.push(`**Estimated impact**\n${exp.estimatedImpact}`);
-	if (exp.alternatives?.length) {
-		parts.push(`**Alternative approaches**\n${exp.alternatives.map((a) => `• ${a}`).join("\n")}`);
-	}
-	return parts.join("\n\n");
-}
-
 export function usePolicyChat(draftId: string | null) {
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [loading, setLoading] = useState(false);
@@ -216,36 +205,19 @@ export function usePolicyChat(draftId: string | null) {
 	const abortRef = useRef<AbortController | null>(null);
 
 	useEffect(() => {
-		if (!draftId) return;
+		if (!draftId) {
+			setMessages([]);
+			return;
+		}
 		let cancelled = false;
 		setLoading(true);
 		setError(null);
+		setMessages([]);
 		(async () => {
 			try {
 				const hist = await policyService.getChatHistory(draftId);
 				if (cancelled) return;
-				if (hist.messages && hist.messages.length > 0) {
-					setMessages(hist.messages);
-				} else {
-					// Seed with the structured explanation.
-					try {
-						const seed = await policyService.getExplanation(draftId);
-						if (cancelled) return;
-						if (seed?.explanation) {
-							setMessages([
-								{
-									role: "assistant",
-									content: formatSeedExplanation(seed.explanation),
-									timestamp: seed.timestamp ?? new Date().toISOString(),
-								},
-							]);
-						} else {
-							setMessages([]);
-						}
-					} catch {
-						setMessages([]);
-					}
-				}
+				setMessages(hist.messages ?? []);
 			} catch (err: any) {
 				if (!cancelled) setError(err.message ?? "Failed to load chat");
 			} finally {
@@ -358,4 +330,36 @@ export function useBlockSourceIp() {
 
 export function useWhitelistSource() {
 	return useMutation((id: string) => anomalyService.whitelistSource(id));
+}
+
+// ============================================
+// USER MANAGEMENT (admin-only)
+// ============================================
+
+export function useUsers() {
+	return useData(() => usersService.list(), []);
+}
+
+export function useCreateUser() {
+	return useMutation(
+		(dto: { username: string; password: string; role: UserRole; email?: string }) =>
+			usersService.create(dto),
+	);
+}
+
+export function useUpdateUser() {
+	return useMutation(
+		({ id, dto }: { id: string; dto: { username?: string; email?: string; role?: UserRole } }) =>
+			usersService.update(id, dto),
+	);
+}
+
+export function useDeleteUser() {
+	return useMutation((id: string) => usersService.delete(id));
+}
+
+export function useResetUserPassword() {
+	return useMutation(({ id, password }: { id: string; password: string }) =>
+		usersService.resetPassword(id, password),
+	);
 }

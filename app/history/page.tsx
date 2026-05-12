@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty";
 import {
 	Search,
 	CheckCircle,
@@ -16,6 +17,7 @@ import {
 	Trash2,
 	Loader2,
 	User,
+	History as HistoryIcon,
 } from "lucide-react";
 import { usePolicyHistory } from "@/hooks/useData";
 import { useSocketEvent } from "@/hooks/useSocket";
@@ -116,18 +118,26 @@ export default function HistoryPage() {
 				</div>
 
 				{/* Timeline */}
-				{loading ? (
+				{loading && events.length === 0 ? (
 					<Card className="p-8 flex items-center gap-2 text-muted-foreground">
 						<Loader2 className="h-4 w-4 animate-spin" /> Loading audit log…
 					</Card>
 				) : error ? (
-					<Card className="p-8 text-sm text-red-600">Failed to load audit log: {error}</Card>
+					<Card className="p-8 text-sm text-destructive">Failed to load audit log: {error}</Card>
 				) : filteredEvents.length === 0 ? (
-					<Card className="p-8 text-center text-muted-foreground">
-						{events.length === 0
-							? "No policy events have been recorded yet."
-							: "No events match the current filters."}
-					</Card>
+					<EmptyState
+						icon={HistoryIcon}
+						title={
+							events.length === 0
+								? "No policy events yet"
+								: "No events match the current filters"
+						}
+						description={
+							events.length === 0
+								? "Once policies are created, approved, or applied, every action will appear here."
+								: "Try clearing the filters above."
+						}
+					/>
 				) : (
 					<div className="space-y-4">
 						{filteredEvents.map((event, idx) => (

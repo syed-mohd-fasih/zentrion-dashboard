@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from "./client";
-import type { User, ParsedRequest, ServiceInfo, Anomaly, PolicyDraft, PolicyHistory, AuthorizationRule, SystemSetting, SandboxResult, LlmPolicyResponse, HealthResponse, ComplianceScore, ChatMessage } from "./types";
+import type { User, AdminUser, UserRole, ParsedRequest, ServiceInfo, Anomaly, PolicyDraft, PolicyHistory, AuthorizationRule, SystemSetting, SandboxResult, LlmPolicyResponse, HealthResponse, ComplianceScore, ChatMessage } from "./types";
 
 // ============================================
 // AUTH SERVICE
@@ -33,6 +33,30 @@ export const authService = {
 	 */
 	async getMe() {
 		return apiClient.get<{ user: User }>("/auth/me");
+	},
+
+	/**
+	 * Mark the onboarding tour as completed on the server.
+	 */
+	async completeTour() {
+		return apiClient.post<{ firstLogin: boolean }>("/auth/tour-completed");
+	},
+
+	/**
+	 * Self-edit username / email on the authenticated user.
+	 */
+	async updateProfile(patch: { username?: string; email?: string }) {
+		return apiClient.patch<{ user: User }>("/auth/me", patch);
+	},
+
+	/**
+	 * Change the authenticated user's password.
+	 */
+	async changePassword(currentPassword: string, newPassword: string) {
+		return apiClient.post<{ ok: true }>("/auth/me/password", {
+			currentPassword,
+			newPassword,
+		});
 	},
 
 	/**
@@ -319,6 +343,28 @@ export const settingsService = {
 			setting: SystemSetting;
 			timestamp: string;
 		}>("/settings", { key, value });
+	},
+};
+
+// ============================================
+// USERS SERVICE (admin-gated CRUD)
+// ============================================
+
+export const usersService = {
+	async list() {
+		return apiClient.get<{ users: AdminUser[] }>("/users");
+	},
+	async create(dto: { username: string; password: string; role: UserRole; email?: string }) {
+		return apiClient.post<{ user: AdminUser }>("/users", dto);
+	},
+	async update(id: string, dto: { username?: string; email?: string; role?: UserRole }) {
+		return apiClient.patch<{ user: AdminUser }>(`/users/${id}`, dto);
+	},
+	async delete(id: string) {
+		return apiClient.delete<{ ok: true }>(`/users/${id}`);
+	},
+	async resetPassword(id: string, password: string) {
+		return apiClient.post<{ ok: true }>(`/users/${id}/reset-password`, { password });
 	},
 };
 

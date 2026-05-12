@@ -24,6 +24,7 @@ interface AuthState {
 	logout: () => Promise<void>;
 	checkAuth: () => Promise<void>;
 	clearError: () => void;
+	markTourCompleted: () => Promise<void>;
 }
 
 /**
@@ -103,6 +104,17 @@ export const useAuthStore = create<AuthState>()(
 			},
 
 			clearError: () => set({ error: null }),
+
+			markTourCompleted: async () => {
+				try {
+					await authService.completeTour();
+				} catch (err) {
+					console.error("Failed to mark tour completed on server:", err);
+				}
+				set((state) => ({
+					user: state.user ? { ...state.user, firstLogin: false } : state.user,
+				}));
+			},
 		}),
 		{
 			name: "auth-storage",
